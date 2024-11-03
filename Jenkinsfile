@@ -1,52 +1,65 @@
 pipeline {  
     agent any  
 
+    environment {  
+        DOCKER_HUB_CREDENTIALS = credentials('docker-hub') // Replace with your Docker Hub creds ID  
+        GITHUB_CREDENTIALS = credentials('github-id') // Replace with your GitHub creds ID  
+    }  
+
     stages {  
         stage('Checkout') {  
             steps {  
-                script {  
-                    // Checkout the current branch  
-                    checkout scm  
-                }  
+                checkout scm  
             }  
         }  
-        stage('Build') {  
-            steps {  
-                script {  
-                    // List files and print working directory for debugging  
-                    sh 'ls'  
-                    sh 'pwd'  
-                    // Execute the build script  
-                    sh 'bash build.sh'  
-                }  
+        
+        stage('Build Image for Dev') {  
+            when {  
+                branch 'dev'  
             }  
-        }  
-        stage('Push to Docker Hub') {  
             steps {  
                 script {  
-                    def imageName = "proj-img" // Define your image name  
-
-                    // Use the environment variable to determine the branch  
-                    if (env.BRANCH_NAME == 'dev') {  
-                        sh "docker tag ${imageName} joshdoc/dev:${imageName}:latest" // Use your Docker Hub username  
-                        sh "docker push joshdoc/dev:${imageName}:latest"  
-                    } else if (env.BRANCH_NAME == 'master') {  
-                        sh "docker tag ${imageName} joshdoc/prod:${imageName}:latest" // Use your Docker Hub username  
-                        sh "docker push joshdoc/prod:${imageName}:latest"  
-                    } else {  
-                        echo "No matching branch for Docker push. Current branch: ${env.BRANCH_NAME}"  
+                    sh './build.sh'  
+                    withDockerRegistry([credentialsId: DOCKER_HUB_CREDENTIALS, url: '']) {  
+                        sh 'docker tag your-image dev:latest' // Tag your image accordingly  
+                        sh 'docker push your-dockerhub-username/dev:latest'  
                     }  
                 }  
             }  
         }  
+
+        stage('Build Image for Prod') {  
+            when {  
+                branch 'master'  
+            }  
+            steps {  
+                script {  
+                    sh 'docker tag your-image prod:latest' // Tag accordingly  
+                    sh 'docker push your-dockerhub-username/prod:latest'  
+                }  
+            }  
+        }  
+
         stage('Deploy') {  
             steps {  
                 script {  
-                    // Execute the deployment script  
-                    sh 'bash deploy.sh'  
+                    sh './deploy.sh'  
                 }  
             }  
         }  
     }  
-}
+    
+    post {  
+        success {  
+            notify('Success')  
+        }  
+        failure {  
+            notify('Failure')  
+        }  
+    }  
+}  
 
+void notify(String msg) {  
+    // Custom notification function (could be an email or Slack notification)  
+    echo msg  
+}
