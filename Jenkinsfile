@@ -18,6 +18,7 @@ pipeline {
                 script {  
                     // Ensure build.sh does indeed build the Docker image and exposes the correct name.  
                     sh './build_new.sh'   
+                    sh 'ls -l'
                 }  
             }  
         }  
